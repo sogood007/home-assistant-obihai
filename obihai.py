@@ -43,16 +43,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 def get_state(url, username, password) :
 
-    resp = requests.get(url, auth=requests.auth.HTTPDigestAuth(username,password))
-    root = xml.etree.ElementTree.fromstring(resp.text)
-
     services = dict()
-    for o in root.findall("object") :
-      name = o.attrib.get('name') 
-      if 'Service Status' in name :
-        for e in o.findall("./parameter[@name='Status']/value") :
-          state = e.attrib.get('current').split()[0] # take the first word
-          services[name] = state
+    try: 
+      resp = requests.get(url, auth=requests.auth.HTTPDigestAuth(username,password), timeout=2)
+      root = xml.etree.ElementTree.fromstring(resp.text)
+      for o in root.findall("object") :
+        name = o.attrib.get('name') 
+        if 'Service Status' in name :
+          for e in o.findall("./parameter[@name='Status']/value") :
+            state = e.attrib.get('current').split()[0] # take the first word
+            services[name] = state
+    except requests.exceptions.RequestException as e:
+      _LOGGER.error(e)
     return services
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
